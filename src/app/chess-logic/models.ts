@@ -1,3 +1,5 @@
+import { Peice } from "./peices/peice";
+
 export enum Color{
     White, 
     Black
@@ -39,3 +41,23 @@ export const peiceImagePath: Readonly<Record<FENChar, string>> = {
 }
 
 export type SafeSquares = Map<string, Coords[]>;
+
+export type lastMove = {
+    peice: Peice
+    prevX: number;
+    prevY: number;
+    currX: number;
+    currY: number
+}
+
+type KingCheck = {
+    isInCheck: true;
+    x: number;
+    y: number
+}
+
+type KingNotChecked = {
+    isInCheck: false;
+}
+
+export type CheckState = KingCheck | KingNotChecked

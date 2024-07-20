@@ -2,11 +2,14 @@
     <div *ngFor="let row of chessBoardView; let x = index" class="row">
         <div *ngFor="let peice of row; let y = index" class="square" 
             [ngClass] = "{
-                'dark' : isSquareDark(x, y), 'light' : !isSquareDark(x,y),
-                'selected-square': isSquareSelected(x, y) 
+                'dark' : isSquareDark(x, y), 
+                'light' : !isSquareDark(x, y),
+                'selected-square': isSquareSelected(x, y) ,
+                'last-move': isSquareLastMove(x, y),
+                'king-in-check': isSquareChecked(x, y)
             }"
             
-            (click)="selectingPeice(x,y)"
+            (click)="move(x,y)"
         >
             <div [ngClass]="{'safe-square': isSquareSafeForSelectedPeice(x, y)}" ></div>
             <img *ngIf="peice" [src]="peiceImagePaths[peice]" [alt]="peice" class="piece">

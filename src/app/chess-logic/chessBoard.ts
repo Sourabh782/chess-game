@@ -1,4 +1,4 @@
-import { Color, Coords, FENChar, SafeSquares } from "./models";
+import { CheckState, Color, Coords, FENChar, lastMove, SafeSquares } from "./models";
 import { Bishop } from "./peices/bishop";
 import { King } from "./peices/king";
 import { Knight } from "./peices/knight";
@@ -12,6 +12,8 @@ export class ChessBoard{
     private _playerColor = Color.White;
     private readonly chessBoardSize: number = 8;
     private _safeSquares: SafeSquares;
+    private _lastMove: lastMove | undefined;
+    private _checkedState: CheckState = { isInCheck: false }
 
     constructor(){
         this.chessBoard = [
@@ -69,7 +71,11 @@ export class ChessBoard{
         return x >= 0 && y >= 0 && x < this.chessBoardSize && y < this.chessBoardSize;
     }
 
-    public inInCheck(playerColor: Color): boolean{
+    public get checkState(): CheckState{
+        return this._checkedState
+    }
+
+    public isInCheck(playerColor: Color, checkingCurrentPosition: boolean): boolean{
 
         for(let x = 0; x<this.chessBoardSize; x++){
             for(let y=0; y<this.chessBoardSize; y++){
@@ -93,6 +99,7 @@ export class ChessBoard{
                         const attackedPeice: Peice | null = this.chessBoard[newX][newY]
 
                         if(attackedPeice instanceof King && attackedPeice.color === playerColor){
+                            if(checkingCurrentPosition) this._checkedState = {isInCheck: true, x: newX, y: newY};
                             return true;
                         }
                     } else {
@@ -100,6 +107,7 @@ export class ChessBoard{
                             const attackedPeice: Peice | null = this.chessBoard[newX][newY]
 
                             if(attackedPeice instanceof King && attackedPeice.color === playerColor){
+                                if(checkingCurrentPosition) this._checkedState = {isInCheck: true, x: newX, y: newY};
                                 return true;
                             }
                             if(attackedPeice !== null) break;
@@ -111,6 +119,8 @@ export class ChessBoard{
                 }
             }
         }
+
+        if(checkingCurrentPosition) this._checkedState = {isInCheck: false}
 
         return false;
     }
@@ -125,7 +135,7 @@ export class ChessBoard{
         this.chessBoard[prevX][prevY] = null;
         this.chessBoard[newX][newY] = peice;
 
-        const isPositionSafe: boolean = !this.inInCheck(peice.color);
+        const isPositionSafe: boolean = !this.isInCheck(peice.color, false);
 
         this.chessBoard[prevX][prevY] = peice;
         this.chessBoard[newX][newY] = newPeice
@@ -159,17 +169,20 @@ export class ChessBoard{
                         continue;
                     }
                     // restrict pawn movement
-                    if(peice instanceof Pawn){
-                        if(dx === 2 || dx === -2){
-                            if(newPeice) continue;
-
-                            if(this.chessBoard[newX + (dx === 2 ? -1 : 1)][newY]) continue
+                    if (peice instanceof Pawn) {
+                        // cant move pawn two squares straight if there is Peice infront of him
+                        if (dx === 2 || dx === -2) {
+                            if (newPeice) continue;
+                            if (this.chessBoard[newX + (dx === 2 ? -1 : 1)][newY]) continue;
                         }
 
-                        if((dx === 1 || dx === -1) && dy === 0 && newPeice) continue;
+                        // cant move pawn one square straight if Peice is infront of him
+                        if ((dx === 1 || dx === -1) && dy === 0 && newPeice) continue;
 
-                        if((dy === -1 || dy === 1) && (!newPeice || peice.color === newPeice.color)) continue;
+                        // cant move pawn diagonally if there is no Peice, or Peice has same color as pawn
+                        if ((dy === 1 || dy === -1) && (!newPeice || peice.color === newPeice.color)) continue;
                     }
+
                     if(peice instanceof Pawn || peice instanceof Knight || peice instanceof King){
                         if(this.isPositionSafeAfterMove(peice, x, y, newX, newY)){
                             peiceSafeSquares.push({x: newX, y: newY})
@@ -204,10 +217,35 @@ export class ChessBoard{
         return safeSquares
     }
 
+    public get lastMove(): lastMove | undefined{
+        return this._lastMove
+    }
+
     public move(prevX: number, prevY: number, newX: number, newY: number): void{
         if(!this.areCoordsValid(prevX, prevY) || !this.areCoordsValid(newX, newY)){
             return;
         }
-        
+
+        const peice: Peice | null = this.chessBoard[prevX][prevY];
+
+        if(!peice || peice.color !== this._playerColor) return;
+
+        const peiceSafeSquares: Coords[] | undefined = this._safeSquares.get(prevX + "," + prevY);
+
+        if(!peiceSafeSquares || !peiceSafeSquares.find(coords => coords.x === newX && coords.y === newY)){
+            throw new Error("square is not safe")
+        }
+
+        if((peice instanceof Pawn || peice instanceof Rook || peice instanceof King) && !peice.hasMoved){
+            peice.hasMoved = true;
+        }
+
+        this.chessBoard[prevX][prevY] = null;
+        this.chessBoard[newX][newY] = peice
+
+        this._lastMove = {peice, prevX, prevY, currX: newX, currY: newY}
+        this._playerColor = this._playerColor === Color.White ? Color.Black : Color.White;
+        this.isInCheck(this._playerColor, true);
+        this._safeSquares = this.findSafeSquares()
     }
 }

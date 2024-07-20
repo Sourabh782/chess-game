@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { ChessBoard } from '../../chess-logic/chessBoard';
-import { Color, Coords, FENChar, peiceImagePath, SafeSquares } from '../../chess-logic/models';
+import { CheckState, Color, Coords, FENChar, lastMove, peiceImagePath, SafeSquares } from '../../chess-logic/models';
 import { CommonModule, NgFor } from '@angular/common';
 import { SelectedSquare } from './models';
 
@@ -16,6 +16,12 @@ export class ChessBoardComponent {
 
   private chessBoard = new ChessBoard();
   public chessBoardView: (FENChar | null)[][] = this.chessBoard.chessBoardView;
+
+  private selectedSquare: SelectedSquare = {peice: null}
+  private peiceSafeSquares: Coords[] = []
+  private lastMove: lastMove | undefined = this.chessBoard.lastMove;
+  private checkState: CheckState = this.chessBoard.checkState;
+
   public get playerColor(): Color {
     return this.chessBoard.playerColor
   }
@@ -23,11 +29,22 @@ export class ChessBoardComponent {
     return this.chessBoard.safeSquares
   }
 
-  private selectedSquare: SelectedSquare = {peice: null}
-  private peiceSafeSquares: Coords[] = []
-
   public isSquareDark(x: number, y: number): boolean {
     return ChessBoard.isSquareDark(x, y)
+  }
+
+  public isSquareLastMove(x: number, y: number): boolean{
+    if(!this.lastMove){
+      return false;
+    }
+
+    const {prevX, prevY, currX, currY} = this.lastMove;
+    
+    return (x === prevX && y === prevY) || (x === currX && y === currY)
+  }
+
+  public isSquareChecked(x: number, y: number): boolean {
+    return this.checkState.isInCheck && this.checkState.x === x && this.checkState.y === y;
   }
 
   public isSquareSelected(x: number, y: number): boolean{
@@ -46,6 +63,10 @@ export class ChessBoardComponent {
       return;
     }
 
+    const isSameSquareClicked: boolean = !!this.selectedSquare.peice && this.selectedSquare.x === x && this.selectedSquare.y === y
+    this.unMarkingPreviouslySelectedAndSafeSquare();
+    if(isSameSquareClicked) return
+
     this.selectedSquare = {peice, x, y};
     this.peiceSafeSquares = this.safeSquares.get(x+","+y) || [];
   }
@@ -58,5 +79,34 @@ export class ChessBoardComponent {
     const isWhitePeiceSelected: boolean = peice ===peice.toUpperCase();
 
     return isWhitePeiceSelected && this.playerColor === Color.Black || !isWhitePeiceSelected && this.playerColor === Color.White
+  }
+
+  private unMarkingPreviouslySelectedAndSafeSquare():void{
+    this.selectedSquare = {peice: null};
+    this.peiceSafeSquares = []
+  }
+
+  private placingPiece(newX: number, newY: number): void {
+    if(!this.selectedSquare.peice){
+      return;
+    }
+
+    if(!this.isSquareSafeForSelectedPeice(newX, newY)){
+      return
+    }
+
+    const {x: prevX, y: prevY} = this.selectedSquare;
+    this.chessBoard.move(prevX, prevY, newX, newY)
+    this.chessBoardView = this.chessBoard.chessBoardView;
+    this.checkState = this.chessBoard.checkState;
+    this.lastMove = this.chessBoard.lastMove
+
+
+    this.unMarkingPreviouslySelectedAndSafeSquare()
+  }
+
+  public move(x: number, y: number){
+    this.selectingPeice(x, y);
+    this.placingPiece(x, y);
   }
 }
