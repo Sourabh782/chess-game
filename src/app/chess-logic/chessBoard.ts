@@ -208,6 +208,15 @@ export class ChessBoard{
                     }
                 }
 
+                if(peice instanceof King){
+                    if(this.canCastle(peice, true)){
+                        peiceSafeSquares.push({x, y: 6})
+                    }
+                    if(this.canCastle(peice, false)){
+                        peiceSafeSquares.push({x, y: 2});
+                    }
+                }
+
                 if(peiceSafeSquares.length){
                     safeSquares.set(x + "," + y, peiceSafeSquares)
                 }
@@ -239,7 +248,7 @@ export class ChessBoard{
         if((peice instanceof Pawn || peice instanceof Rook || peice instanceof King) && !peice.hasMoved){
             peice.hasMoved = true;
         }
-
+        this.handleSpecialMoves(peice, prevX, prevY, newX, newY);
         this.chessBoard[prevX][prevY] = null;
         this.chessBoard[newX][newY] = peice
 
@@ -247,5 +256,44 @@ export class ChessBoard{
         this._playerColor = this._playerColor === Color.White ? Color.Black : Color.White;
         this.isInCheck(this._playerColor, true);
         this._safeSquares = this.findSafeSquares()
+    }
+
+    private canCastle(king: King, kingSideCastle: boolean): boolean{
+        if(king.hasMoved) return false;
+
+        const kingPositionX: number = king.color === Color.White ? 0 : 7;
+        const kingPositionY: number = 4;
+        const rookPositionX: number = kingPositionX;
+        const rookPositionY: number = kingSideCastle ? 7 : 0;
+        const rook: Peice | null = this.chessBoard[rookPositionX][rookPositionY]
+
+        if(!(rook instanceof Rook) || rook.hasMoved || this._checkedState.isInCheck){
+            return false;
+        }
+
+        const firstNextKingPositionY: number = kingPositionY + (kingSideCastle ? 1 : -1);
+        const secondNextKingPositionY: number = kingPositionY + (kingSideCastle ? 2 : -2);
+
+        if(this.chessBoard[kingPositionX][firstNextKingPositionY] || this.chessBoard[kingPositionX][secondNextKingPositionY]) return false;
+
+        if (!kingSideCastle && this.chessBoard[kingPositionX][1]) return false;
+
+        return this.isPositionSafeAfterMove(king, kingPositionX, kingPositionY, kingPositionX, firstNextKingPositionY) &&
+            this.isPositionSafeAfterMove(king, kingPositionX, kingPositionY, kingPositionX, secondNextKingPositionY);
+    }
+
+    private handleSpecialMoves(peice: Peice, prevX: number, prevY: number, newX: number, newY: number): void{
+        if(peice instanceof King && Math.abs(newY - prevY) === 2){ // castling
+            // newY > prevY -> king side castle else queen side castle
+            const rookPositionX: number = prevX;
+            const rookPositionY: number = newY > prevY ? 7 : 0;
+
+            const rook = this.chessBoard[rookPositionX][rookPositionY] as Rook;
+            const rookNewPositionY: number = newY > prevY ? 5 : 3;
+
+            this.chessBoard[rookPositionX][rookPositionY] = null;
+            this.chessBoard[rookPositionX][rookNewPositionY] = rook;
+            rook.hasMoved = true;
+        }
     }
 }
