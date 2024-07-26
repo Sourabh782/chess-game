@@ -125,8 +125,13 @@ export class ChessBoard{
         return false;
     }
 
-    private isPositionSafeAfterMove(peice: Peice, prevX: number, prevY: number, newX: number, newY: number): boolean{
+    private isPositionSafeAfterMove(prevX: number, prevY: number, newX: number, newY: number): boolean{
+        const peice: Peice|null = this.chessBoard[prevX][prevY];
         const newPeice: Peice | null = this.chessBoard[newX][newY];
+
+        if(!peice){
+            return false;
+        }
 
         if(newPeice && newPeice.color === peice.color){
             return false;
@@ -184,7 +189,7 @@ export class ChessBoard{
                     }
 
                     if(peice instanceof Pawn || peice instanceof Knight || peice instanceof King){
-                        if(this.isPositionSafeAfterMove(peice, x, y, newX, newY)){
+                        if(this.isPositionSafeAfterMove(x, y, newX, newY)){
                             peiceSafeSquares.push({x: newX, y: newY})
                         }
                     }
@@ -194,7 +199,7 @@ export class ChessBoard{
                             if(newPeice && newPeice.color === peice.color){
                                 break;
                             }
-                            if(this.isPositionSafeAfterMove(peice, x, y, newX, newY)){
+                            if(this.isPositionSafeAfterMove(x, y, newX, newY)){
                                 peiceSafeSquares.push({x: newX, y: newY})
                             }
                             if(newPeice !== null){
@@ -216,6 +221,9 @@ export class ChessBoard{
                         peiceSafeSquares.push({x, y: 2});
                     }
                 }
+                else if(peice instanceof Pawn && this.canCaptureEnPassant(peice, x, y)){
+                    peiceSafeSquares.push({ x: x + (peice.color === Color.White ? 1 : -1), y: this._lastMove!.prevY });
+                }
 
                 if(peiceSafeSquares.length){
                     safeSquares.set(x + "," + y, peiceSafeSquares)
@@ -230,7 +238,7 @@ export class ChessBoard{
         return this._lastMove
     }
 
-    public move(prevX: number, prevY: number, newX: number, newY: number): void{
+    public move(prevX: number, prevY: number, newX: number, newY: number, promotedPeiceType: FENChar | null): void{
         if(!this.areCoordsValid(prevX, prevY) || !this.areCoordsValid(newX, newY)){
             return;
         }
@@ -249,8 +257,14 @@ export class ChessBoard{
             peice.hasMoved = true;
         }
         this.handleSpecialMoves(peice, prevX, prevY, newX, newY);
+
+        if(promotedPeiceType){
+            this.chessBoard[newX][newY] = this.promotePeice(promotedPeiceType);
+        } else {
+            this.chessBoard[newX][newY] = peice
+        }
+
         this.chessBoard[prevX][prevY] = null;
-        this.chessBoard[newX][newY] = peice
 
         this._lastMove = {peice, prevX, prevY, currX: newX, currY: newY}
         this._playerColor = this._playerColor === Color.White ? Color.Black : Color.White;
@@ -278,8 +292,8 @@ export class ChessBoard{
 
         if (!kingSideCastle && this.chessBoard[kingPositionX][1]) return false;
 
-        return this.isPositionSafeAfterMove(king, kingPositionX, kingPositionY, kingPositionX, firstNextKingPositionY) &&
-            this.isPositionSafeAfterMove(king, kingPositionX, kingPositionY, kingPositionX, secondNextKingPositionY);
+        return this.isPositionSafeAfterMove(kingPositionX, kingPositionY, kingPositionX, firstNextKingPositionY) &&
+            this.isPositionSafeAfterMove(kingPositionX, kingPositionY, kingPositionX, secondNextKingPositionY);
     }
 
     private handleSpecialMoves(peice: Peice, prevX: number, prevY: number, newX: number, newY: number): void{
@@ -294,6 +308,53 @@ export class ChessBoard{
             this.chessBoard[rookPositionX][rookPositionY] = null;
             this.chessBoard[rookPositionX][rookNewPositionY] = rook;
             rook.hasMoved = true;
+        }
+        else if(
+            peice instanceof Pawn &&
+            this._lastMove &&
+            this._lastMove.peice instanceof Pawn &&
+            Math.abs(this._lastMove.currX - this._lastMove.prevX) == 2 &&
+            prevX === this._lastMove.currX &&
+            newY === this._lastMove.currY
+        ) {
+            this.chessBoard[this._lastMove.currX][this._lastMove.currY] = null
+        }
+    }
+
+    private canCaptureEnPassant(pawn: Pawn, pawnX: number, pawnY: number): boolean{
+        if (!this._lastMove) return false;
+        const { peice, prevX, prevY, currX, currY } = this._lastMove;
+
+        if (
+            !(peice instanceof Pawn) ||
+            pawn.color !== this._playerColor ||
+            Math.abs(currX - prevX) !== 2 ||
+            pawnX !== currX ||
+            Math.abs(pawnY - currY) !== 1
+        ) return false;
+
+        const pawnNewPositionX: number = pawnX + (pawn.color === Color.White ? 1 : -1);
+        const pawnNewPositionY: number = currY;
+
+        this.chessBoard[currX][currY] = null;
+        const isPositionSafe: boolean = this.isPositionSafeAfterMove(pawnX, pawnY, pawnNewPositionX, pawnNewPositionY);
+        this.chessBoard[currX][currY] = peice;
+
+        return isPositionSafe;
+    }
+
+    private promotePeice(promotedPeiceType: FENChar): Knight | Bishop | Rook | Queen{
+        if(promotedPeiceType === FENChar.WhiteKnight || promotedPeiceType === FENChar.BlackKnight){
+            return new Knight(this.playerColor);
+        }
+        else if(promotedPeiceType === FENChar.WhiteQueen || promotedPeiceType === FENChar.BlackQueen){
+            return new Queen(this.playerColor);
+        }
+        else if(promotedPeiceType === FENChar.WhiteRook || promotedPeiceType === FENChar.BlackRook){
+            return new Rook(this.playerColor);
+        }
+        else {
+            return new Bishop(this.playerColor);
         }
     }
 }
