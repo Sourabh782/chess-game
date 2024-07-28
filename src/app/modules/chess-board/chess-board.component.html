@@ -16,8 +16,11 @@
             <img *ngIf="peice" [src]="peiceImagePaths[peice]" [alt]="peice" class="piece">
         </div>
     </div>
+
     
 </div>
+<h2 *ngIf="gameOverMessage" class="game-over-message">{{gameOverMessage}}</h2>
+
 <div *ngIf="isPromotionActive" class="promotion-dialog">
     <img *ngFor="let peice of promotionPeices()" [src] = "peiceImagePaths[peice]" [alt]="peice" (click)="promotePeice(peice)" >
     <span class="close-promotion-dialog" (click)="closeDialog()"> &times; </span>
