@@ -24,8 +24,13 @@ export class ChessBoardComponent {
 
   // pawn promotion
   public isPromotionActive: boolean = false;
+  public flipMode: boolean = false;
   private promotionCoords: Coords|null = null;
   private promotedPeice: FENChar|null = null;
+
+  public flipBoard(): void{
+    this.flipMode = !this.flipMode
+  }
 
   public promotionPeices(): FENChar[]{
     return this.playerColor === Color.White ? [FENChar.WhiteBishop, FENChar.WhiteKnight, FENChar.WhiteQueen, FENChar.WhiteRook] :

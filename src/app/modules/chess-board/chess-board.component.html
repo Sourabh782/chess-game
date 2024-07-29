@@ -1,4 +1,4 @@
-<div class="chess-board">
+<div class="chess-board" [ngClass]="{'rotated': flipMode}">
     <div *ngFor="let row of chessBoardView; let x = index" class="row">
         <div *ngFor="let peice of row; let y = index" class="square" 
             [ngClass] = "{
@@ -13,12 +13,15 @@
             (click)="move(x,y)"
         >
             <div [ngClass]="{'safe-square': isSquareSafeForSelectedPeice(x, y)}" ></div>
-            <img *ngIf="peice" [src]="peiceImagePaths[peice]" [alt]="peice" class="piece">
+            <img *ngIf="peice" [src]="peiceImagePaths[peice]" [alt]="peice" class="piece" [ngClass]="{'rotated': flipMode}">
         </div>
     </div>
 
     
 </div>
+
+<button (click)="flipBoard()">Flip</button>
+
 <h2 *ngIf="gameOverMessage" class="game-over-message">{{gameOverMessage}}</h2>
 
 <div *ngIf="isPromotionActive" class="promotion-dialog">
