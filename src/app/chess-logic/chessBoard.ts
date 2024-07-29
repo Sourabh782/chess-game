@@ -1,3 +1,4 @@
+import { FENConverter } from "./FENConverter";
 import { CheckState, Color, Coords, FENChar, lastMove, SafeSquares } from "./models";
 import { Bishop } from "./peices/bishop";
 import { King } from "./peices/king";
@@ -17,6 +18,11 @@ export class ChessBoard{
     private _isGameOver: boolean = false;
     private _gameOverMessage: string | undefined = undefined
     private fiftyMoveRuleCounter: number = 0;
+    private fullNumberOfMoves: number = 1;
+    private thereeFoldRepetitionDictionary = new Map<string, number>();
+    private threeFoldRepetitionFlag: boolean = false;
+    private _boardAsFENString: string = FENConverter.initalPosition
+    private FENConverter = new FENConverter();
 
     constructor(){
         this.chessBoard = [
@@ -58,6 +64,10 @@ export class ChessBoard{
 
     public get gameOverMessage(): string|undefined{
         return this._gameOverMessage
+    }
+
+    public get boardAsFENString(): string {
+        return this._boardAsFENString;
     }
 
     public get isGameOver(): boolean {
@@ -290,6 +300,10 @@ export class ChessBoard{
         this.isInCheck(this._playerColor, true);
         this._safeSquares = this.findSafeSquares()
 
+        if(this._playerColor === Color.White) this.fullNumberOfMoves++;
+        this._boardAsFENString = this.FENConverter.convertBoardToFEN(this.chessBoard, this._playerColor, this._lastMove,                    this.fiftyMoveRuleCounter, this.fullNumberOfMoves)
+
+        this.updateThereeFoldRepetitionDictionary(this._boardAsFENString);
         this._isGameOver = this.isGameFinished()
     }
 
@@ -394,6 +408,12 @@ export class ChessBoard{
 
             return true;
         }
+
+        if(this.threeFoldRepetitionFlag){
+            this._gameOverMessage = "Draw due to three Fold Repetition rule";
+            return true;
+        }
+
         if(this.fiftyMoveRuleCounter == 50){
             this._gameOverMessage = "Draw due to fifty move rule";
             return true;
@@ -458,5 +478,21 @@ export class ChessBoard{
         ) return true;
 
         return false;
+    }
+
+    private updateThereeFoldRepetitionDictionary(FENString: string): void{
+        const threeFoldRepetitionFENKey: string = FENString.split(" ").slice(0,4).join("");
+        const threeFoldRepetitionValue: number|undefined = this.thereeFoldRepetitionDictionary.get(threeFoldRepetitionFENKey);
+
+        if(threeFoldRepetitionValue === undefined){
+            this.thereeFoldRepetitionDictionary.set(threeFoldRepetitionFENKey, 1);
+        } else {
+            if(threeFoldRepetitionValue === 2){
+                this.threeFoldRepetitionFlag = true;
+                return;
+            }
+
+            this.thereeFoldRepetitionDictionary.set(threeFoldRepetitionFENKey, 2);
+        }
     }
 }
