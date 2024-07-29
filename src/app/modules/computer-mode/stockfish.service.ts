@@ -1,16 +1,19 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { ChessMove, StockfishQueryParams, StockfishResponse } from './models';
-import { Observable, of, pipe, switchMap } from 'rxjs';
+import { Observable, of, switchMap } from 'rxjs';
 import { FENChar } from '../../chess-logic/models';
 
 @Injectable({
   providedIn: 'root'
 })
+
 export class StockfishService {
   private readonly api: string = "https://stockfish.online/api/s/v2.php"
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {
+    console.log("hi");
+   }
 
   private convertColumnToYCoord(s: string): number {
     return s.charCodeAt(0) - "a".charCodeAt(0);
@@ -37,6 +40,7 @@ export class StockfishService {
   }
 
   public getBestMove(fen: string): Observable<ChessMove>{
+    console.log("hello")
     const queryParams: StockfishQueryParams = {
       fen,
       depth: 13,

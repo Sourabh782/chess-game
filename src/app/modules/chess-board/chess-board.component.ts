@@ -3,6 +3,7 @@ import { ChessBoard } from '../../chess-logic/chessBoard';
 import { CheckState, Color, Coords, FENChar, lastMove, peiceImagePath, SafeSquares } from '../../chess-logic/models';
 import { CommonModule, NgFor } from '@angular/common';
 import { SelectedSquare } from './models';
+import { ChessBoardService } from './chess-board.service';
 
 @Component({
   selector: 'app-chess-board',
@@ -12,6 +13,8 @@ import { SelectedSquare } from './models';
   styleUrl: './chess-board.component.css'
 })
 export class ChessBoardComponent {
+  constructor(protected chessBoardService: ChessBoardService) { }
+
   public peiceImagePaths = peiceImagePath
 
   private chessBoard = new ChessBoard();
@@ -137,7 +140,7 @@ export class ChessBoardComponent {
 
     const {x: prevX, y: prevY} = this.selectedSquare;
     
-    this.updateBoard(prevX, prevY, newX, newY);
+    this.updateBoard(prevX, prevY, newX, newY, this.promotedPeice);
   }
 
   public isSquarePromotionSquare(x: number, y: number): boolean{
@@ -145,7 +148,7 @@ export class ChessBoardComponent {
     return this.promotionCoords.x === x && this.promotionCoords.y === y;
   }
 
-  private updateBoard(prevX: number, prevY: number, newX: number, newY: number): void{
+  protected updateBoard(prevX: number, prevY: number, newX: number, newY: number, promotedPiece: FENChar | null): void{
     this.chessBoard.move(prevX, prevY, newX, newY, this.promotedPeice)
     this.chessBoardView = this.chessBoard.chessBoardView;
     this.checkState = this.chessBoard.checkState;
@@ -166,7 +169,7 @@ export class ChessBoardComponent {
     const {x: newX, y: newY} = this.promotionCoords
     const {x: prevX, y: prevY} = this.selectedSquare
 
-    this.updateBoard(prevX, prevY, newX, newY);
+    this.updateBoard(prevX, prevY, newX, newY, this.promotedPeice);
   }
 
   public closeDialog(): void{
