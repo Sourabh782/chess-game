@@ -16,14 +16,14 @@ import { MoveListComponent } from '../move-list/move-list.component';
 })
 
 export class ComputerModeComponent extends ChessBoardComponent implements OnInit, OnDestroy {
-  private subscription$ = new Subscription()
+  private computerSubscription$ = new Subscription()
 
     constructor(private stockfishService: StockfishService){
       super(inject(ChessBoardService));
     }
 
-  public ngOnInit(): void {
-
+  public override ngOnInit(): void {
+    super.ngOnInit()
     const computerConfigurationSubscription$: Subscription = this.stockfishService.computerConfiguration$.subscribe({
       next: (computerConfiguration) => {
         console.log(computerConfiguration)
@@ -47,11 +47,12 @@ export class ComputerModeComponent extends ChessBoardComponent implements OnInit
         }
       })
 
-      this.subscription$.add(chessBoardStateSubscription$)
-      this.subscription$.add(computerConfigurationSubscription$)
+      this.computerSubscription$.add(chessBoardStateSubscription$)
+      this.computerSubscription$.add(computerConfigurationSubscription$)
   }
 
-  public ngOnDestroy(): void {
-      this.subscription$.unsubscribe()
+  public override ngOnDestroy(): void {
+    super.ngOnDestroy()
+      this.computerSubscription$.unsubscribe()
   }
 }

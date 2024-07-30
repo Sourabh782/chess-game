@@ -13,7 +13,7 @@
             (click)="move(x,y)"
         >
             <div [ngClass]="{'safe-square': isSquareSafeForSelectedPeice(x, y)}" ></div>
-            <img *ngIf="peice" [src]="peiceImagePaths[peice]" [alt]="peice" class="piece" [ngClass]="{'rotated': flipMode}">
+            <img *ngIf="peice" [src]="peiceImagePaths[peice]" [alt]="peice" class="piece" [ngClass]="{'rotated': flipMode}" draggable="false">
         </div>
     </div>
 

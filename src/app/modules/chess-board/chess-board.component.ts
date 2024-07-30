@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ChessBoard } from '../../chess-logic/chessBoard';
 import { CheckState, Color, Coords, FENChar, GameHistory, lastMove, MoveList, peiceImagePath, SafeSquares } from '../../chess-logic/models';
 import { CommonModule, NgFor } from '@angular/common';
 import { SelectedSquare } from './models';
 import { ChessBoardService } from './chess-board.service';
 import { MoveListComponent } from "../move-list/move-list.component";
+import { filter, fromEvent, Subscription, tap } from 'rxjs';
 
 @Component({
   selector: 'app-chess-board',
@@ -13,8 +14,39 @@ import { MoveListComponent } from "../move-list/move-list.component";
   templateUrl: './chess-board.component.html',
   styleUrl: './chess-board.component.css'
 })
-export class ChessBoardComponent {
+export class ChessBoardComponent implements OnInit, OnDestroy {
   constructor(protected chessBoardService: ChessBoardService) { }
+  
+  private subscriptions$ = new Subscription();
+
+  public ngOnInit(): void {
+    console.log("hiii");
+    
+      const keyEventSubscription: Subscription = fromEvent<KeyboardEvent>(document, "keyup").pipe(
+        filter(event => event.key === "ArrowRight" || event.key === "ArrowLeft"),
+        tap(event => {
+          switch(event.key){
+            case "ArrowRight":
+              if(this.gameHistoryPointer === this.gameHistory.length - 1) return;
+              this.gameHistoryPointer++;
+              break;
+            case "ArrowLeft":
+              if(this.gameHistoryPointer === 0) return;
+              this.gameHistoryPointer--;
+              break;
+            default:
+              break;
+          }
+            this.showPreviousPosition(this.gameHistoryPointer);
+        })
+      ).subscribe();
+
+      this.subscriptions$.add(keyEventSubscription);
+  }
+
+  public ngOnDestroy(): void {
+      this.subscriptions$.unsubscribe();
+  }
 
   public peiceImagePaths = peiceImagePath
 

@@ -316,16 +316,18 @@ export class ChessBoard{
         this._lastMove = {peice, prevX, prevY, currX: newX, currY: newY, moveType}
         this._playerColor = this._playerColor === Color.White ? Color.Black : Color.White;
         this.isInCheck(this._playerColor, true);
-        this._safeSquares = this.findSafeSquares()
 
+        const safeSquares: SafeSquares = this.findSafeSquares()
+        
         if(this._checkedState.isInCheck){
-            moveType.add(!this._safeSquares.size ? MoveType.CheckMate : MoveType.Check)
+            moveType.add(!safeSquares.size ? MoveType.CheckMate : MoveType.Check)
         } else if(!moveType.size) {
             moveType.add(MoveType.BasicMove)
         }
-
+        
         this.storeMove(promotedPeiceType);
         this.updateGameHistory()
+        this._safeSquares = safeSquares
 
         if(this._playerColor === Color.White) this.fullNumberOfMoves++;
         this._boardAsFENString = this.FENConverter.convertBoardToFEN(this.chessBoard, this._playerColor, this._lastMove,                    this.fiftyMoveRuleCounter, this.fullNumberOfMoves)
@@ -527,14 +529,16 @@ export class ChessBoard{
 
     private storeMove(promotedPeice: FENChar|null): void {
         const {peice, currX, currY, prevX, prevY, moveType} = this._lastMove!
-        let peiceName: string = !(peice instanceof Pawn) ? peice.FENChar: ""
+        let peiceName: string = !(peice instanceof Pawn) ? peice.FENChar.toUpperCase() : ""
         let move: string;
 
         if(moveType.has(MoveType.Castling)){
             move = currY - prevY ? "O-O" : "O-O-O"
         } else {
-            move = peiceName + columns[prevY] + String(prevX+1)
-            if(moveType.has(MoveType.Capture)) move += "X"
+            move = peiceName + this.startingPeiceCoordinatesNotation()
+            if(moveType.has(MoveType.Capture)) {
+                move += (peice instanceof Pawn) ? columns[prevY] + "x" : "x"
+            }
             move += columns[currY] + String(currX+1)
 
             if(promotedPeice){
@@ -553,6 +557,48 @@ export class ChessBoard{
         } else {
             this.moveList[this.fullNumberOfMoves-1].push(move)
         }
+    }
+
+    private startingPeiceCoordinatesNotation(): string{
+        const {peice: currPeice, prevX, prevY, currX, currY} = this._lastMove!
+
+        if(currPeice instanceof Pawn || currPeice instanceof King){
+            return ""
+        }
+        const samePeiceCoords: Coords[] = [{x: prevX, y: prevY}]
+
+        for(let x=0; x<this.chessBoardSize; x++){
+            for(let y=0; y<this.chessBoardSize; y++){
+                const peice: Peice|null = this.chessBoard[x][y]
+
+                if(!peice || currX === x && currY === y){
+                    continue;
+                }
+
+                if(peice.FENChar === currPeice.FENChar){
+                    const safeSquares: Coords[] = this._safeSquares.get(x + ","+ y) || [];
+                    const peiceHasSameTargetSquare: boolean = safeSquares.some(coords => coords.x === currX && coords.y === currY)
+
+                    if(peiceHasSameTargetSquare) samePeiceCoords.push({x, y})
+                }
+            }
+        }
+
+        if(samePeiceCoords.length === 1){
+            return "";
+        }
+
+        const peicesFile = new Set(samePeiceCoords.map(coords => coords.y))
+        const peicesRank = new Set(samePeiceCoords.map(coords => coords.x))
+
+        if(peicesFile.size === samePeiceCoords.length){
+            return columns[prevY]
+        }
+        if(peicesRank.size === samePeiceCoords.length){
+            return String(prevX + 1);
+        }
+
+        return columns[prevY] + String(prevX+1);
     }
 
     private updateGameHistory(): void {
