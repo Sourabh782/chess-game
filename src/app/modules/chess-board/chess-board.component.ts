@@ -17,7 +17,7 @@ export class ChessBoardComponent {
 
   public peiceImagePaths = peiceImagePath
 
-  private chessBoard = new ChessBoard();
+  protected chessBoard = new ChessBoard();
   public chessBoardView: (FENChar | null)[][] = this.chessBoard.chessBoardView;
 
   private selectedSquare: SelectedSquare = {peice: null}

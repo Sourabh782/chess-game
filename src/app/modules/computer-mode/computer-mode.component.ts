@@ -5,6 +5,7 @@ import { StockfishService } from './stockfish.service';
 import { ChessBoardService } from '../chess-board/chess-board.service';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
+import { Color } from '../../chess-logic/models';
 
 @Component({
   selector: 'app-computer-mode',
@@ -12,7 +13,6 @@ import { HttpClient } from '@angular/common/http';
   imports: [CommonModule, NgFor],
   templateUrl: '../chess-board/chess-board.component.html',
   styleUrl: '../chess-board/chess-board.component.css',
-  providers: [HttpClient, StockfishService, ChessBoardService]
 })
 
 export class ComputerModeComponent extends ChessBoardComponent implements OnInit, OnDestroy {
@@ -23,12 +23,23 @@ export class ComputerModeComponent extends ChessBoardComponent implements OnInit
     }
 
   public ngOnInit(): void {
+
+    const computerConfigurationSubscription$: Subscription = this.stockfishService.computerConfiguration$.subscribe({
+      next: (computerConfiguration) => {
+        console.log(computerConfiguration)
+        if (computerConfiguration.color === Color.White) this.flipBoard();
+      }
+    })
     
       const chessBoardStateSubscription$: Subscription = this.chessBoardService.chessBoardState$.subscribe({
         next: async (FEN: string)=> {
-          const player: string = FEN.split(" ")[1]
+          if(this.chessBoard.isGameOver){
+            chessBoardStateSubscription$.unsubscribe();
+            return;
+          }
+          const player: Color = FEN.split(" ")[1] === "w" ? Color.White : Color.Black
 
-          if(player === 'w') return // computer always black
+          if(player !== this.stockfishService.computerConfiguration$.value.color) return 
 
           const {prevX, prevY, newX, newY, promotedPeice} = await firstValueFrom(this.stockfishService.getBestMove(FEN));
 
@@ -37,6 +48,7 @@ export class ComputerModeComponent extends ChessBoardComponent implements OnInit
       })
 
       this.subscription$.add(chessBoardStateSubscription$)
+      this.subscription$.add(computerConfigurationSubscription$)
   }
 
   public ngOnDestroy(): void {

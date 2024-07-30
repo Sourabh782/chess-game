@@ -1,0 +1,22 @@
+<mat-dialog-content>
+    <h2 mat-dialog-title>Stockfish Strength</h2>
+
+    <div class="stockfish-strength-container">
+        <div *ngFor="let level of stockfishLevels" 
+            class="strength-div" 
+            (click)="selectStockfishLevel(level)" 
+            [ngClass]="{'selected' : level === stockfishLevel}"
+        >
+            {{level}}
+        </div>
+    </div>
+
+    <div class="choose-side">
+        <img [src]="peiceImagePath[whiteKing]" alt="" class="king-img" draggable="false" (click)="play(1)">
+        <img [src]="peiceImagePath[blackKing]" alt="" class="king-img" draggable="false" (click)="play(0)">
+    </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close (click)="closeDialog()">Cancel</button>
+</mat-dialog-actions>

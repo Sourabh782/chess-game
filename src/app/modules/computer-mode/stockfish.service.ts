@@ -1,8 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { ChessMove, StockfishQueryParams, StockfishResponse } from './models';
-import { Observable, of, switchMap } from 'rxjs';
-import { FENChar } from '../../chess-logic/models';
+import { ChessMove, ComputerConfiguration, StockfishQueryParams, StockfishResponse } from './models';
+import { BehaviorSubject, Observable, of, switchMap } from 'rxjs';
+import { Color, FENChar } from '../../chess-logic/models';
 
 @Injectable({
   providedIn: 'root'
@@ -10,7 +10,11 @@ import { FENChar } from '../../chess-logic/models';
 
 export class StockfishService {
   private readonly api: string = "https://stockfish.online/api/s/v2.php"
-
+  
+  public computerConfiguration$ = new BehaviorSubject<ComputerConfiguration>({
+    color: Color.Black,
+    level: 1
+  })
   constructor(private http: HttpClient) {
     console.log("hi");
    }
@@ -22,10 +26,12 @@ export class StockfishService {
   private promotedPeice(peice: string | undefined): FENChar|null{
     if(!peice) return null;
 
-    if(peice === 'n') return FENChar.BlackKing;
-    if(peice === 'r') return FENChar.BlackRook;
-    if(peice === 'b') return FENChar.BlackBishop
-    return FENChar.BlackQueen;
+    const computerColor = this.computerConfiguration$.value.color
+
+    if(peice === 'n') return computerColor === Color.White ? FENChar.WhiteKing : FENChar.BlackKing;
+    if(peice === 'r') return computerColor === Color.White ? FENChar.WhiteRook : FENChar.BlackRook;
+    if(peice === 'b') return computerColor === Color.White ? FENChar.WhiteBishop : FENChar.BlackBishop
+    return computerColor === Color.White ? FENChar.WhiteQueen : FENChar.BlackQueen;
   }
 
   private moveFromStockfishString(move: string):ChessMove{
@@ -43,14 +49,13 @@ export class StockfishService {
     console.log("hello")
     const queryParams: StockfishQueryParams = {
       fen,
-      depth: 13,
-      mode: "bestmove"
+      depth: this.computerConfiguration$.value.level
     }
 
     let params = new HttpParams().appendAll(queryParams)
 
     return this.http.get<StockfishResponse>(this.api, {params}).pipe(switchMap(response => {
-      const bestMove = response.data.split(" ")[1];
+      const bestMove = response.bestmove.split(" ")[1];
       return of(this.moveFromStockfishString(bestMove))
     }))
   }
