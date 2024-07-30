@@ -28,3 +28,6 @@
     <img *ngFor="let peice of promotionPeices()" [src] = "peiceImagePaths[peice]" [alt]="peice" (click)="promotePeice(peice)" >
     <span class="close-promotion-dialog" (click)="closeDialog()"> &times; </span>
 </div>
+
+<app-move-list [moveList]="moveList" [gameHistoryPointer]="gameHistoryPointer" [gameHistoryLength]="gameHistory.length" (showPreviousPositionEvent)="showPreviousPosition($event)">
+</app-move-list>

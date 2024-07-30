@@ -10,6 +10,15 @@ export type Coords = {
     y: number
 }
 
+export enum MoveType{
+    Capture,
+    Castling,
+    Promotion,
+    Check,
+    CheckMate,
+    BasicMove
+}
+
 export enum FENChar{
     WhitePawn = "P",
     WhiteKnight = "N",
@@ -47,7 +56,8 @@ export type lastMove = {
     prevX: number;
     prevY: number;
     currX: number;
-    currY: number
+    currY: number;
+    moveType: Set<MoveType>
 }
 
 type KingCheck = {
@@ -59,5 +69,13 @@ type KingCheck = {
 type KingNotChecked = {
     isInCheck: false;
 }
+
+export type MoveList = ([string, string?])[]
+
+export type GameHistory = {
+    lastMove: lastMove|undefined,
+    checkState: CheckState,
+    board: (FENChar|null)[][]
+}[]
 
 export type CheckState = KingCheck | KingNotChecked

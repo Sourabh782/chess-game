@@ -1,5 +1,6 @@
+import { pipe } from "rxjs";
 import { FENConverter } from "./FENConverter";
-import { CheckState, Color, Coords, FENChar, lastMove, SafeSquares } from "./models";
+import { CheckState, Color, Coords, FENChar, GameHistory, lastMove, MoveList, MoveType, SafeSquares } from "./models";
 import { Bishop } from "./peices/bishop";
 import { King } from "./peices/king";
 import { Knight } from "./peices/knight";
@@ -7,6 +8,7 @@ import { Pawn } from "./peices/pawn";
 import { Peice } from "./peices/peice";
 import { Queen } from "./peices/queen";
 import { Rook } from "./peices/rook";
+import { columns } from "../modules/chess-board/models";
 
 export class ChessBoard{
     private chessBoard: (Peice | null)[][];
@@ -23,6 +25,9 @@ export class ChessBoard{
     private threeFoldRepetitionFlag: boolean = false;
     private _boardAsFENString: string = FENConverter.initalPosition
     private FENConverter = new FENConverter();
+
+    private _moveList: MoveList = []
+    private _gameHistory: GameHistory;
 
     constructor(){
         this.chessBoard = [
@@ -56,6 +61,8 @@ export class ChessBoard{
             ],
         ]
         this._safeSquares = this.findSafeSquares()
+
+        this._gameHistory = [{board: this.chessBoardView, lastMove: this._lastMove, checkState: this._checkedState}]
     }
 
     public get playerColor(): Color{
@@ -68,6 +75,14 @@ export class ChessBoard{
 
     public get boardAsFENString(): string {
         return this._boardAsFENString;
+    }
+
+    public get moveList():MoveList{
+        return this._moveList;
+    }
+
+    public get gameHistory(): GameHistory{
+        return this._gameHistory
     }
 
     public get isGameOver(): boolean {
@@ -260,6 +275,7 @@ export class ChessBoard{
     }
 
     public move(prevX: number, prevY: number, newX: number, newY: number, promotedPeiceType: FENChar | null): void{
+        const moveType = new Set<MoveType>()
         if(this._isGameOver){
             throw new Error("Game is over");
         }
@@ -282,23 +298,34 @@ export class ChessBoard{
         }
 
         const isPeiceTaken: boolean = this.chessBoard[newX][newY] !== null;
+        if(isPeiceTaken) moveType.add(MoveType.Capture)
         if(peice instanceof Pawn || isPeiceTaken) this.fiftyMoveRuleCounter = 0;
         else this.fiftyMoveRuleCounter += 0.5;
 
-        this.handleSpecialMoves(peice, prevX, prevY, newX, newY);
+        this.handleSpecialMoves(peice, prevX, prevY, newX, newY, moveType);
 
         if(promotedPeiceType){
             this.chessBoard[newX][newY] = this.promotePeice(promotedPeiceType);
+            moveType.add(MoveType.Promotion)
         } else {
             this.chessBoard[newX][newY] = peice
         }
 
         this.chessBoard[prevX][prevY] = null;
 
-        this._lastMove = {peice, prevX, prevY, currX: newX, currY: newY}
+        this._lastMove = {peice, prevX, prevY, currX: newX, currY: newY, moveType}
         this._playerColor = this._playerColor === Color.White ? Color.Black : Color.White;
         this.isInCheck(this._playerColor, true);
         this._safeSquares = this.findSafeSquares()
+
+        if(this._checkedState.isInCheck){
+            moveType.add(!this._safeSquares.size ? MoveType.CheckMate : MoveType.Check)
+        } else if(!moveType.size) {
+            moveType.add(MoveType.BasicMove)
+        }
+
+        this.storeMove(promotedPeiceType);
+        this.updateGameHistory()
 
         if(this._playerColor === Color.White) this.fullNumberOfMoves++;
         this._boardAsFENString = this.FENConverter.convertBoardToFEN(this.chessBoard, this._playerColor, this._lastMove,                    this.fiftyMoveRuleCounter, this.fullNumberOfMoves)
@@ -331,7 +358,7 @@ export class ChessBoard{
             this.isPositionSafeAfterMove(kingPositionX, kingPositionY, kingPositionX, secondNextKingPositionY);
     }
 
-    private handleSpecialMoves(peice: Peice, prevX: number, prevY: number, newX: number, newY: number): void{
+    private handleSpecialMoves(peice: Peice, prevX: number, prevY: number, newX: number, newY: number, moveType: Set<MoveType>): void{
         if(peice instanceof King && Math.abs(newY - prevY) === 2){ // castling
             // newY > prevY -> king side castle else queen side castle
             const rookPositionX: number = prevX;
@@ -343,6 +370,7 @@ export class ChessBoard{
             this.chessBoard[rookPositionX][rookPositionY] = null;
             this.chessBoard[rookPositionX][rookNewPositionY] = rook;
             rook.hasMoved = true;
+            moveType.add(MoveType.Castling)
         }
         else if(
             peice instanceof Pawn &&
@@ -353,6 +381,7 @@ export class ChessBoard{
             newY === this._lastMove.currY
         ) {
             this.chessBoard[this._lastMove.currX][this._lastMove.currY] = null
+            moveType.add(MoveType.Capture)
         }
     }
 
@@ -494,5 +523,43 @@ export class ChessBoard{
 
             this.thereeFoldRepetitionDictionary.set(threeFoldRepetitionFENKey, 2);
         }
+    }
+
+    private storeMove(promotedPeice: FENChar|null): void {
+        const {peice, currX, currY, prevX, prevY, moveType} = this._lastMove!
+        let peiceName: string = !(peice instanceof Pawn) ? peice.FENChar: ""
+        let move: string;
+
+        if(moveType.has(MoveType.Castling)){
+            move = currY - prevY ? "O-O" : "O-O-O"
+        } else {
+            move = peiceName + columns[prevY] + String(prevX+1)
+            if(moveType.has(MoveType.Capture)) move += "X"
+            move += columns[currY] + String(currX+1)
+
+            if(promotedPeice){
+                move += "=" + promotedPeice.toUpperCase();
+            }
+        }
+
+        if(moveType.has(MoveType.Check)){
+            move += "+";
+        } else if(moveType.has(MoveType.CheckMate)){
+            move += "#";
+        }
+
+        if(!this._moveList[this.fullNumberOfMoves-1]){
+            this._moveList[this.fullNumberOfMoves-1] = [move]
+        } else {
+            this.moveList[this.fullNumberOfMoves-1].push(move)
+        }
+    }
+
+    private updateGameHistory(): void {
+        this._gameHistory.push({
+            board: {...this.chessBoardView.map(row => [...row])},
+            checkState: {...this._checkedState},
+            lastMove: this._lastMove ? {...this._lastMove} : undefined
+        });
     }
 }

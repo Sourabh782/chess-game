@@ -1,14 +1,15 @@
 import { Component } from '@angular/core';
 import { ChessBoard } from '../../chess-logic/chessBoard';
-import { CheckState, Color, Coords, FENChar, lastMove, peiceImagePath, SafeSquares } from '../../chess-logic/models';
+import { CheckState, Color, Coords, FENChar, GameHistory, lastMove, MoveList, peiceImagePath, SafeSquares } from '../../chess-logic/models';
 import { CommonModule, NgFor } from '@angular/common';
 import { SelectedSquare } from './models';
 import { ChessBoardService } from './chess-board.service';
+import { MoveListComponent } from "../move-list/move-list.component";
 
 @Component({
   selector: 'app-chess-board',
   standalone: true,
-  imports: [NgFor, CommonModule],
+  imports: [NgFor, CommonModule, MoveListComponent, MoveListComponent],
   templateUrl: './chess-board.component.html',
   styleUrl: './chess-board.component.css'
 })
@@ -34,6 +35,16 @@ export class ChessBoardComponent {
   public flipBoard(): void{
     this.flipMode = !this.flipMode
   }
+
+  public get moveList(): MoveList {
+    return this.chessBoard.moveList
+  }
+
+  public get gameHistory(): GameHistory {
+    return this.chessBoard.gameHistory
+  }
+
+  public gameHistoryPointer: number = 0;
 
   public promotionPeices(): FENChar[]{
     return this.playerColor === Color.White ? [FENChar.WhiteBishop, FENChar.WhiteKnight, FENChar.WhiteQueen, FENChar.WhiteRook] :
@@ -155,6 +166,7 @@ export class ChessBoardComponent {
     this.lastMove = this.chessBoard.lastMove
 
     this.unMarkingPreviouslySelectedAndSafeSquare()
+    this.gameHistoryPointer++;
   }
 
   public move(x: number, y: number){
@@ -174,5 +186,16 @@ export class ChessBoardComponent {
 
   public closeDialog(): void{
     this.unMarkingPreviouslySelectedAndSafeSquare()
+  }
+
+  public showPreviousPosition(moveIndex: number): void {
+    // console.log(moveIndex)
+    const {checkState, lastMove} = this.gameHistory[moveIndex];
+    const boards = Object.values(this.gameHistory[moveIndex].board);
+    // console.log(boards)
+    this.chessBoardView = boards
+    this.checkState = checkState;
+    this.lastMove = lastMove
+    this.gameHistoryPointer = moveIndex
   }
 }
