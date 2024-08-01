@@ -196,7 +196,7 @@ export class ChessBoardComponent implements OnInit, OnDestroy {
     this.chessBoardView = this.chessBoard.chessBoardView;
     this.checkState = this.chessBoard.checkState;
     this.lastMove = this.chessBoard.lastMove
-
+    this.chessBoardService.chessBoardState$.next(this.chessBoard.boardAsFENString);
     this.unMarkingPreviouslySelectedAndSafeSquare()
     this.gameHistoryPointer++;
   }

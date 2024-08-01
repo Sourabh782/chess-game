@@ -15,9 +15,7 @@ export class StockfishService {
     color: Color.Black,
     level: 1
   })
-  constructor(private http: HttpClient) {
-    console.log("hi");
-   }
+  constructor(private http: HttpClient) {}
 
   private convertColumnToYCoord(s: string): number {
     return s.charCodeAt(0) - "a".charCodeAt(0);
@@ -26,7 +24,7 @@ export class StockfishService {
   private promotedPeice(peice: string | undefined): FENChar|null{
     if(!peice) return null;
 
-    const computerColor = this.computerConfiguration$.value.color
+    const computerColor: Color = this.computerConfiguration$.value.color
 
     if(peice === 'n') return computerColor === Color.White ? FENChar.WhiteKing : FENChar.BlackKing;
     if(peice === 'r') return computerColor === Color.White ? FENChar.WhiteRook : FENChar.BlackRook;
@@ -55,7 +53,7 @@ export class StockfishService {
     let params = new HttpParams().appendAll(queryParams)
 
     return this.http.get<StockfishResponse>(this.api, {params}).pipe(switchMap(response => {
-      const bestMove = response.bestmove.split(" ")[1];
+      const bestMove: string = response.bestmove.split(" ")[1];
       return of(this.moveFromStockfishString(bestMove))
     }))
   }
